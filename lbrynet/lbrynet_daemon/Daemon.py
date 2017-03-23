@@ -1442,8 +1442,8 @@ class Daemon(AuthJSONRPCServer):
     @AuthJSONRPCServer.auth_required
     @defer.inlineCallbacks
     def jsonrpc_get(
-            self, name, file_name=None, stream_info=None, timeout=None,
-            download_directory=None, wait_for_write=True):
+    self, name, file_name=None, stream_info=None, timeout=None,
+    download_directory=None, wait_for_write=True):
         """
         Download stream from a LBRY name.
 
@@ -1629,8 +1629,6 @@ class Daemon(AuthJSONRPCServer):
         cost = yield self.get_est_cost(name, size)
         defer.returnValue(cost)
 
-
-
     @AuthJSONRPCServer.auth_required
     @defer.inlineCallbacks
     def jsonrpc_publish(self, name, bid, metadata=None, file_path=None, fee=None, title=None,
@@ -1722,7 +1720,6 @@ class Daemon(AuthJSONRPCServer):
                     metadata['fee'][currency]['address'] = new_address
             metadata['fee'] = FeeValidator(metadata['fee'])
 
-
         log.info("Publish: %s", {
             'name': name,
             'file_path': file_path,
@@ -1762,9 +1759,12 @@ class Daemon(AuthJSONRPCServer):
         try:
             abandon_claim_tx = yield self.session.wallet.abandon_claim(txid, nout)
             response = yield self._render_response(abandon_claim_tx)
-        except Exception as err:
+        except BaseException as err:
             log.warning(err)
-            response = yield self._render_response(err)
+            if len(err.args) and err.args[0] == "txid was not found in wallet":
+                raise Exception("This transaction was not found in your wallet")
+            else:
+                response = yield self._render_response(err)
         defer.returnValue(response)
 
     @AuthJSONRPCServer.auth_required
@@ -2109,7 +2109,6 @@ class Daemon(AuthJSONRPCServer):
             (str) Success/Fail message or (dict) decoded data
         """
         return self.jsonrpc_blob_get(sd_hash, timeout, 'json', payment_rate_manager)
-
 
     @AuthJSONRPCServer.auth_required
     @defer.inlineCallbacks
@@ -2636,6 +2635,3 @@ def format_json_out_amount_as_float(obj):
     elif isinstance(obj, list):
         obj = [format_json_out_amount_as_float(o) for o in obj]
     return obj
-
-
-
